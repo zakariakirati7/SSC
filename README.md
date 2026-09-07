@@ -28,10 +28,16 @@ python3 tools/build-standalone.py
 ## Deploying
 
 `.github/workflows/pages.yml` deploys the repository root to GitHub Pages on
-every push to the default branch. It enables Pages itself
-(`actions/configure-pages` with `enablement: true`), so no repository setting
-has to be changed by hand, and it fails the build if `index.html` is out of
-date with its source.
+every push to the default branch, and fails the build if `index.html` is out
+of date with its source.
+
+Pages has to be switched on once by hand, at
+<https://github.com/zakariakirati7/SSC/settings/pages> — set **Source** to
+**GitHub Actions**. The workflow asks for this itself
+(`actions/configure-pages` with `enablement: true`), but the token a workflow
+receives cannot create a Pages site: that needs repository-admin rights, and
+the call comes back `Resource not accessible by integration`. Once Pages is
+on, the same step finds the existing site and the deploy proceeds.
 
 The site is at <https://zakariakirati7.github.io/SSC/>.
 
