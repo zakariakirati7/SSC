@@ -5,19 +5,27 @@ on:
     branches: [claude/cats-pdf-document-mdt9jl]
   workflow_dispatch:
 
-# Read the repo, publish Pages, and prove the deployment's identity.
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Let a running deploy finish rather than cancelling it mid-publish.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test coffee-tracker/sync.test.js
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -25,24 +33,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the site file is up to date with its source
-        run: |
-          python3 tools/build-standalone.py
-          if ! git diff --quiet -- index.html; then
-            echo "::error file=index.html::index.html is stale. Run 'python3 tools/build-standalone.py' and commit the result."
-            git diff --stat -- index.html
-            exit 1
-          fi
+      # Sync is enabled only if the repository carries these secrets; without
+      # them the site deploys as the local-only tracker rather than failing.
+      - name: Build the site
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: python3 tools/build-standalone.py
 
-      # enablement: true turns Pages on if it is off, so no repository
-      # setting has to be changed by hand.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./dist
 
       - id: deploy
         uses: actions/deploy-pages@v4

@@ -3,46 +3,94 @@
 A coffee and caffeine tracker. Log each cup, see how much caffeine is still in
 your system at bedtime, and track daily totals against a cap.
 
-Everything runs in the browser. Each visitor's log is kept in their own
-`localStorage` — there is no server, no account, and no shared data.
+The tracker works with no backend at all: every visitor's ledger lives in their
+own browser. Sign in — if a Supabase project is configured — and it also syncs
+across their devices. Local storage stays the source of truth, so the app keeps
+working offline, signed out, or with the backend down.
 
 ## Layout
 
 | Path | What it is |
 |------|------------|
-| `index.html` | The published site. **Generated — do not edit.** |
-| `coffee-tracker/index.html` | The source. Edit this. |
-| `tools/build-standalone.py` | Wraps the source in a full HTML document. |
-
-The source is written for the Claude Artifact runtime, which supplies its own
-`<!doctype html><head>…</head><body>` wrapper at publish time — so that file
-carries no document tags. GitHub Pages serves files as-is, so the build script
-adds the wrapper.
-
-After changing `coffee-tracker/index.html`:
+| `coffee-tracker/index.html` | The app. Edit this. A fragment: no `<html>`/`<body>`. |
+| `coffee-tracker/sync.js` | Merge rules and the push/pull engine. |
+| `coffee-tracker/sync.test.js` | Tests for the above. |
+| `coffee-tracker/retired.html` | The "moved" page published at the old Claude Artifact URL. |
+| `supabase/schema.sql` | Tables, triggers and Row Level Security policies. |
+| `tools/build-standalone.py` | Assembles `dist/index.html`. |
+| `netlify.toml` | Netlify build config and security headers. |
+| `dist/` | Build output. Git-ignored; never edit. |
 
 ```sh
-python3 tools/build-standalone.py
+python3 tools/build-standalone.py          # build (sync off)
+node --test coffee-tracker/sync.test.js    # test the sync logic
 ```
+
+The build inlines `sync.js`, adds the Supabase client from a CDN, wraps
+everything in a real HTML document, and substitutes `SUPABASE_URL` and
+`SUPABASE_ANON_KEY` from the environment. Without those two variables the page
+detects the missing config, hides the sync panel, and runs local-only.
+
+## Setting up the backend
+
+**1. Create a Supabase project** at <https://supabase.com>. The free tier is
+enough.
+
+**2. Apply the schema.** SQL Editor → New query → paste `supabase/schema.sql` →
+Run. This creates the tables *and* the Row Level Security policies. Do not skip
+it or create the tables by hand: RLS is the only thing keeping one person's
+ledger out of another's.
+
+**3. Decide about email confirmation.** Authentication → Sign In / Up → Email.
+With "Confirm email" **on** (the default) a new account must click a link
+before it works, and the free tier's built-in mailer is rate-limited to a few
+messages an hour — fine for you, awkward for onboarding several friends at
+once. Turning it off lets people sign in immediately, at the cost of allowing
+sign-ups with addresses they do not own. Either is defensible here; know which
+you chose.
+
+**4. Copy the keys.** Project Settings → API: the Project URL and the `anon`
+public key.
+
+**5. Give them to the site.** Netlify → Site configuration → Environment
+variables → add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, then redeploy.
+
+The anon key is meant to be public — it ships inside the page and anyone can
+read it. It is not a password and grants nothing on its own; the RLS policies
+decide what a request may touch. Keeping it in an environment variable rather
+than in git is tidiness, not secrecy. The **service role** key is the opposite:
+it bypasses RLS entirely and must never appear in this repository or in the
+page.
 
 ## Deploying
 
-`.github/workflows/pages.yml` deploys the repository root to GitHub Pages on
-every push to the default branch, and fails the build if `index.html` is out
-of date with its source.
+**Netlify** builds from this repository: build command
+`python3 tools/build-standalone.py`, publish directory `dist`. `netlify.toml`
+declares both, plus a Content-Security-Policy restricting the page to the
+Supabase and CDN hosts it actually uses — headers being the thing GitHub Pages
+cannot do.
 
-Pages has to be switched on once by hand, at
-<https://github.com/zakariakirati7/SSC/settings/pages> — set **Source** to
-**GitHub Actions**. The workflow asks for this itself
-(`actions/configure-pages` with `enablement: true`), but the token a workflow
-receives cannot create a Pages site: that needs repository-admin rights, and
-the call comes back `Resource not accessible by integration`. Once Pages is
-on, the same step finds the existing site and the deploy proceeds.
+**GitHub Pages** also still deploys, from `.github/workflows/pages.yml`, at
+<https://zakariakirati7.github.io/SSC/>. It runs the tests, builds, and
+publishes `dist/`. To enable sync there too, add `SUPABASE_URL` and
+`SUPABASE_ANON_KEY` as repository secrets (Settings → Secrets and variables →
+Actions); without them that deploy stays local-only.
 
-The site is at <https://zakariakirati7.github.io/SSC/>.
+Running both is fine, but they are separate origins with separate browser
+storage: a signed-out ledger on one is invisible to the other. Signed in, both
+show the same synced data.
 
-Pages for a private repository requires a paid GitHub plan; on a free account
-the repository must be public.
+## How sync behaves
+
+- **Local first.** Every change is written to `localStorage` immediately and
+  pushed afterwards. Losing the network loses nothing.
+- **Union merges.** Two devices that each logged a different cup end up with
+  both. Cups carry unique ids, so one seen on both sides is kept once, and
+  merging is order-independent. A day is never overwritten wholesale.
+- **Batched writes.** Rapid edits collapse into one request, a failed push is
+  retried rather than dropped, and an edit made mid-request is not lost.
+- **Sample data never syncs.** The example cups shown on an empty ledger are
+  illustration, and are dropped the moment anything real arrives.
 
 ## Caffeine figures
 

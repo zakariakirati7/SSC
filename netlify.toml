@@ -1,0 +1,41 @@
+# Netlify build and headers for Brew Ledger.
+#
+# Set SUPABASE_URL and SUPABASE_ANON_KEY under
+# Site configuration → Environment variables. The build reads them and
+# substitutes them into the page; without them the site still deploys and runs
+# as the local-only tracker.
+
+[build]
+  command = "python3 tools/build-standalone.py"
+  publish = "dist"
+
+# Headers are the one thing GitHub Pages cannot do, and the reason this policy
+# lives here. The page's own scripts and styles are inline, hence
+# 'unsafe-inline' — the value of the policy is the host allowlist: a script
+# injected from anywhere else will not run, and the page can only talk to
+# Supabase.
+[[headers]]
+  for = "/*"
+
+  [headers.values]
+    Content-Security-Policy = """
+      default-src 'self'; \
+      script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; \
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+      font-src https://fonts.gstatic.com; \
+      img-src 'self' data:; \
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co; \
+      form-action 'none'; \
+      frame-ancestors 'none'; \
+      base-uri 'none'"""
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), interest-cohort=()"
+
+# The page is rebuilt on every deploy and is the whole app, so let it revalidate
+# rather than sit stale in a browser cache.
+[[headers]]
+  for = "/index.html"
+
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

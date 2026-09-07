@@ -310,7 +310,8 @@
     margin-bottom: 6px;
   }
 
-  select, input[type="text"], input[type="time"], input[type="number"] {
+  select, input[type="text"], input[type="time"], input[type="number"],
+  input[type="email"], input[type="password"] {
     width: 100%;
     font-family: var(--body);
     font-size: var(--step-0);
@@ -571,6 +572,15 @@
     margin: 0;
   }
 
+  .sync-who {
+    margin: 0 0 10px;
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+  .sync-who strong { color: var(--ink); font-weight: 700; word-break: break-all; }
+
+  #sync-state { text-transform: lowercase; }
+
   #backup-text {
     width: 100%;
     font-family: var(--mono);
@@ -699,6 +709,37 @@
           <p class="backup-status" id="backup-status" role="status"></p>
         </details>
       </section>
+
+      <section class="panel" id="sync-panel" aria-labelledby="sync-heading" hidden>
+        <header>
+          <h2 id="sync-heading">Sync across devices</h2>
+          <span class="meta" id="sync-state">off</span>
+        </header>
+
+        <div id="sync-signed-out">
+          <p class="hint" style="margin:0 0 12px">Make an account and your ledger follows you to your phone. Skip it and everything stays in this browser.</p>
+          <div class="field">
+            <label for="sync-email">Email</label>
+            <input type="email" id="sync-email" autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="sync-password">Password</label>
+            <input type="password" id="sync-password" autocomplete="current-password">
+          </div>
+          <div class="backup-actions">
+            <button class="btn ghost" id="sync-signin" type="button">Sign in</button>
+            <button class="btn ghost" id="sync-signup" type="button">Create account</button>
+          </div>
+        </div>
+
+        <div id="sync-signed-in" hidden>
+          <p class="sync-who">Signed in as <strong id="sync-email-label"></strong></p>
+          <button class="btn ghost" id="sync-signout" type="button">Sign out</button>
+        </div>
+
+        <p class="backup-status" id="sync-message" role="status"></p>
+      </section>
+
     </div>
 
     <!-- ============ right column ============ -->
@@ -798,7 +839,7 @@
 </div>
 
 <script>
-(function () {
+(function (root) {
   "use strict";
 
   /* ------------------------------------------------------------------ *
@@ -1044,11 +1085,13 @@
       state.prefs.limitMg = isFinite(v) && v > 0 ? v : DEFAULTS.limitMg;
       el("limit").value = state.prefs.limitMg;
       persistPrefs();
+      touchPrefs();
       render();
     });
     el("bedtime").addEventListener("change", function () {
       state.prefs.bedtime = el("bedtime").value || DEFAULTS.bedtime;
       persistPrefs();
+      touchPrefs();
       render();
     });
 
@@ -1095,6 +1138,7 @@
     state.days[key] = drinks;
 
     persistDay();
+    touchDay(key);
     state.form.mgEdited = false;
     var now = new Date();
     el("time").value = pad(now.getHours()) + ":" + pad(now.getMinutes());
@@ -1107,6 +1151,7 @@
     if (state.sample) { clearSample(); render(); return; }
     state.days[key] = dayDrinks(key).filter(function (d) { return d.id !== id; });
     persistDay();
+    touchDay(key);
     render();
   }
 
@@ -1518,6 +1563,8 @@
     }
 
     saveLocal();
+    Object.keys(parsed.days).forEach(touchDay);
+    touchPrefs();
     render();
     syncBackupText();
     backupStatus(result.cups
@@ -1646,6 +1693,181 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Sync (Supabase)
+   *
+   * Optional throughout. The build substitutes the project URL and anon key;
+   * left unsubstituted, or with the client script blocked, the panel stays
+   * hidden and the app is exactly the local-only one it was before.
+   * ------------------------------------------------------------------ */
+  var SUPABASE_URL = "__SUPABASE_URL__";
+  var SUPABASE_ANON_KEY = "__SUPABASE_ANON_KEY__";
+
+  var sb = null;
+  var engine = null;
+
+  function syncConfigured() {
+    return SUPABASE_URL.indexOf("__SUPABASE") === -1
+      && SUPABASE_ANON_KEY.indexOf("__SUPABASE") === -1
+      && SUPABASE_URL && SUPABASE_ANON_KEY;
+  }
+
+  function syncMessage(msg, bad) {
+    var node = el("sync-message");
+    node.textContent = msg || "";
+    node.classList.toggle("bad", !!bad);
+  }
+
+  function setSyncState(stateName, detail) {
+    var label = { syncing: "syncing…", synced: "synced", error: "retrying" }[stateName] || stateName;
+    el("sync-state").textContent = label;
+    if (stateName === "error" && detail) {
+      syncMessage("Could not reach the server. Your cups are safe here and will go up when it is back.", true);
+    } else if (stateName === "synced") {
+      syncMessage("");
+    }
+  }
+
+  /* Supabase reads and writes. Row Level Security scopes every statement to
+   * the signed-in user, so no query here filters by user itself. */
+  function makeAdapter(client, userId) {
+    return {
+      pull: function () {
+        return Promise.all([
+          client.from("days").select("day,cups"),
+          client.from("prefs").select("limit_mg,bedtime").maybeSingle()
+        ]).then(function (res) {
+          if (res[0].error) throw res[0].error;
+          if (res[1].error) throw res[1].error;
+          return { days: res[0].data || [], prefs: res[1].data || null };
+        });
+      },
+      pushDays: function (rows) {
+        var payload = rows.map(function (r) {
+          return { user_id: userId, day: r.day, cups: r.cups };
+        });
+        return client.from("days").upsert(payload, { onConflict: "user_id,day" })
+          .then(function (res) { if (res.error) throw res.error; });
+      },
+      pushPrefs: function (prefs) {
+        return client.from("prefs").upsert(
+          { user_id: userId, limit_mg: prefs.limitMg, bedtime: prefs.bedtime },
+          { onConflict: "user_id" }
+        ).then(function (res) { if (res.error) throw res.error; });
+      }
+    };
+  }
+
+  function syncHooks() {
+    return {
+      getLocal: function () {
+        // Sample cups are illustration, never data - never push them.
+        return { days: state.sample ? {} : state.days, prefs: state.prefs };
+      },
+      applyMerged: function (days, prefs) {
+        clearSample();
+        state.days = days;
+        state.prefs = prefs;
+        el("limit").value = prefs.limitMg;
+        el("bedtime").value = prefs.bedtime;
+        saveLocal();
+        render();
+      },
+      onStatus: setSyncState
+    };
+  }
+
+  function startEngine(user) {
+    engine = new BrewSync.Engine(makeAdapter(sb, user.id), syncHooks());
+    engine.start().catch(function () { /* status already reported */ });
+  }
+
+  function touchDay(key) { if (engine) engine.markDay(key); }
+  function touchPrefs() { if (engine) engine.markPrefs(); }
+
+  function showSignedIn(user) {
+    el("sync-signed-out").hidden = true;
+    el("sync-signed-in").hidden = false;
+    el("sync-email-label").textContent = user.email || "your account";
+    startEngine(user);
+  }
+
+  function showSignedOut() {
+    if (engine) { engine.stop(); engine = null; }
+    el("sync-signed-out").hidden = false;
+    el("sync-signed-in").hidden = true;
+    el("sync-state").textContent = "off";
+  }
+
+  // Supabase surfaces its own wording; these cover the cases people hit.
+  function authError(err) {
+    var msg = (err && err.message) || "Something went wrong.";
+    if (/Invalid login credentials/i.test(msg)) return "That email and password do not match an account.";
+    if (/User already registered/i.test(msg)) return "That email already has an account - sign in instead.";
+    if (/Password should be/i.test(msg)) return "Pick a password of at least six characters.";
+    if (/Unable to validate email/i.test(msg) || /invalid format/i.test(msg)) return "That does not look like an email address.";
+    if (/Email not confirmed/i.test(msg)) return "Check your inbox and confirm the address first.";
+    return msg;
+  }
+
+  function credentials() {
+    return {
+      email: (el("sync-email").value || "").trim(),
+      password: el("sync-password").value || ""
+    };
+  }
+
+  function buildSync() {
+    if (!syncConfigured()) return;
+
+    if (!root.supabase || typeof root.supabase.createClient !== "function") {
+      el("sync-panel").hidden = false;
+      el("sync-signed-out").hidden = true;
+      syncMessage("Sync is configured but its script did not load, so this browser is keeping your ledger locally.", true);
+      return;
+    }
+
+    sb = root.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    el("sync-panel").hidden = false;
+
+    el("sync-signin").addEventListener("click", function () {
+      var c = credentials();
+      if (!c.email || !c.password) return syncMessage("Enter your email and password.", true);
+      syncMessage("Signing in…");
+      sb.auth.signInWithPassword(c).then(function (res) {
+        if (res.error) syncMessage(authError(res.error), true);
+        else syncMessage("");
+      });
+    });
+
+    el("sync-signup").addEventListener("click", function () {
+      var c = credentials();
+      if (!c.email || !c.password) return syncMessage("Enter an email and a password to sign up with.", true);
+      syncMessage("Creating your account…");
+      sb.auth.signUp(c).then(function (res) {
+        if (res.error) return syncMessage(authError(res.error), true);
+        if (res.data && res.data.session) syncMessage("");
+        else syncMessage("Account made. Confirm the link in your inbox, then sign in.");
+      });
+    });
+
+    el("sync-signout").addEventListener("click", function () {
+      sb.auth.signOut().then(function () {
+        syncMessage("Signed out. Your ledger stays in this browser.");
+      });
+    });
+
+    sb.auth.onAuthStateChange(function (event, session) {
+      if (session && session.user) showSignedIn(session.user);
+      else showSignedOut();
+    });
+
+    sb.auth.getSession().then(function (res) {
+      var session = res && res.data && res.data.session;
+      if (session && session.user) showSignedIn(session.user);
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * Boot
    * ------------------------------------------------------------------ */
   function initChrome() {
@@ -1661,9 +1883,10 @@
   initChrome();
   buildForm();
   buildBackup();
+  buildSync();
   if (!hadLocal) showSample();
   renderStorageNote();
   render();
 
-})();
+})(typeof globalThis !== "undefined" ? globalThis : window);
 </script>
