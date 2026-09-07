@@ -1,0 +1,1573 @@
+<title>Brew Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #E8EAE3;
+    --surface: #F7F8F4;
+    --sunken: #EDEFE8;
+    --ink: #14180F;
+    --ink-2: #4F5648;
+    --ink-3: #7B8272;
+    --line: #D6DACD;
+    --line-soft: #E2E5DA;
+    --accent: #0F7D50;
+    --accent-text: #0F7D50;
+    --accent-tint: #DCEBE1;
+    --warn: #9A5A08;
+    --warn-tint: #F4E7D2;
+    --crit: #C33A2A;
+    --crit-tint: #F6E0DC;
+    --shadow: 0 1px 2px rgba(20, 24, 15, .06), 0 8px 24px -16px rgba(20, 24, 15, .3);
+    --radius: 10px;
+
+    --step--1: .8125rem;
+    --step-0: .9375rem;
+    --step-1: 1.125rem;
+    --step-2: 1.5rem;
+    --step-3: 2.125rem;
+
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body: "Karla", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #101208;
+      --surface: #1B1E17;
+      --sunken: #16190F;
+      --ink: #F0F2EA;
+      --ink-2: #A9B0A0;
+      --ink-3: #79806F;
+      --line: #2E3327;
+      --line-soft: #23271D;
+      --accent: #008C55;
+      --accent-text: #59C48D;
+      --accent-tint: #16301F;
+      --warn: #DDA02F;
+      --warn-tint: #2E2512;
+      --crit: #E58170;
+      --crit-tint: #33201B;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101208;
+    --surface: #1B1E17;
+    --sunken: #16190F;
+    --ink: #F0F2EA;
+    --ink-2: #A9B0A0;
+    --ink-3: #79806F;
+    --line: #2E3327;
+    --line-soft: #23271D;
+    --accent: #008C55;
+    --accent-text: #59C48D;
+    --accent-tint: #16301F;
+    --warn: #DDA02F;
+    --warn-tint: #2E2512;
+    --crit: #E58170;
+    --crit-tint: #33201B;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: var(--step-0);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 28px 20px 64px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 20px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 22px;
+  }
+
+  .masthead h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: var(--step-3);
+    line-height: 1;
+    letter-spacing: -.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .masthead .dateline {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-2);
+    margin-right: auto;
+  }
+
+  .storage-note {
+    font-size: var(--step--1);
+    color: var(--ink-3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+  }
+  .dot.is-local { background: var(--warn); }
+
+  /* ---------- banner ---------- */
+  .banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    border: 1px solid var(--warn);
+    border-left-width: 4px;
+    border-radius: var(--radius);
+    background: var(--warn-tint);
+    color: var(--ink);
+    font-size: var(--step--1);
+  }
+  .banner strong { font-weight: 700; }
+  .banner p { margin: 0; margin-right: auto; }
+
+  /* ---------- layout ---------- */
+  .columns {
+    display: grid;
+    grid-template-columns: 350px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .columns { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .stack {
+    display: grid;
+    gap: 20px;
+    align-content: start;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+
+  .panel > h2,
+  .panel > header > h2 {
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: var(--step--1);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 0 0 14px;
+  }
+
+  .panel header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .panel header h2 { margin: 0; }
+  .panel header .meta {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-3);
+  }
+
+  /* ---------- today hero ---------- */
+  .today {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 620px) {
+    .today { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .figure-label {
+    font-size: var(--step--1);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    font-weight: 700;
+  }
+
+  .figure {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .figure .value { font-size: var(--step-3); letter-spacing: -.03em; }
+  .figure .unit { font-size: var(--step-0); color: var(--ink-3); }
+
+  .meter {
+    margin-top: 14px;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--sunken);
+    border: 1px solid var(--line-soft);
+    overflow: hidden;
+    position: relative;
+  }
+  .meter .fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 6px 3px 3px 6px;
+    transition: width .35s ease;
+  }
+  .meter.is-over .fill { background: var(--crit); }
+
+  .meter-legend {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-3);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    font-size: var(--step--1);
+    font-weight: 700;
+    border: 1px solid currentColor;
+  }
+  .status.ok { color: var(--accent-text); background: var(--accent-tint); }
+  .status.warn { color: var(--warn); background: var(--warn-tint); }
+  .status.crit { color: var(--crit); background: var(--crit-tint); }
+  .status svg { flex: none; }
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding-left: 22px;
+    border-left: 1px solid var(--line);
+  }
+  @media (max-width: 620px) {
+    .split { padding-left: 0; border-left: 0; padding-top: 16px; border-top: 1px solid var(--line); }
+  }
+
+  .split .figure .value { font-size: var(--step-2); }
+  .split .sub {
+    font-size: var(--step--1);
+    color: var(--ink-3);
+    margin-top: 6px;
+  }
+
+  /* ---------- form ---------- */
+  .field { margin-bottom: 14px; }
+  .field:last-of-type { margin-bottom: 0; }
+
+  label, .field-label {
+    display: block;
+    font-size: var(--step--1);
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--ink-2);
+    margin-bottom: 6px;
+  }
+
+  select, input[type="text"], input[type="time"], input[type="number"] {
+    width: 100%;
+    font-family: var(--body);
+    font-size: var(--step-0);
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  input[type="number"], input[type="time"] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  select:focus-visible,
+  input:focus-visible,
+  button:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .chip {
+    font-family: var(--body);
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink-2);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 11px;
+    cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--ink); }
+  .chip[aria-pressed="true"] {
+    background: var(--accent-tint);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 700;
+  }
+
+  .row-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .seg button {
+    font-family: var(--body);
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink-2);
+    background: transparent;
+    border: 0;
+    border-right: 1px solid var(--line);
+    padding: 8px 4px;
+    cursor: pointer;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+  :root[data-theme="dark"] .seg button[aria-pressed="true"],
+  :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: #fff; }
+
+  .readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 10px 12px;
+    background: var(--sunken);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+  .readout .mg {
+    font-size: var(--step-1);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn {
+    width: 100%;
+    font-family: var(--body);
+    font-size: var(--step-0);
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost {
+    color: var(--ink-2);
+    background: transparent;
+    border-color: var(--line);
+    font-weight: 500;
+    width: auto;
+    padding: 5px 11px;
+    font-size: var(--step--1);
+  }
+  .btn.ghost:hover { border-color: var(--ink-3); color: var(--ink); filter: none; }
+
+  /* ---------- charts ---------- */
+  .chart { width: 100%; display: block; overflow: visible; }
+  .chart-shell { position: relative; }
+
+  .tick { font-family: var(--mono); font-size: 11px; fill: var(--ink-3); }
+  .tick-strong { font-family: var(--mono); font-size: 11px; fill: var(--ink-2); }
+  .bar-label { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    min-width: 118px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--ink-3);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    font-size: var(--step--1);
+    line-height: 1.35;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity .12s ease;
+  }
+  .tooltip.on { opacity: 1; }
+  .tooltip .tt-title { font-weight: 700; }
+  .tooltip .tt-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 10px;
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 12px; height: 3px; border-radius: 2px; background: var(--accent); flex: none; }
+  .swatch.dash {
+    height: 0;
+    border-top: 2px dashed var(--crit);
+    background: none;
+    width: 14px;
+  }
+
+  /* ---------- log list ---------- */
+  .log { list-style: none; margin: 0; padding: 0; }
+  .log li {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .log li:last-child { border-bottom: 0; }
+  .log .time {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .log .name { font-weight: 500; }
+  .log .name small {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-3);
+    font-size: var(--step--1);
+  }
+  .log .mg {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+  .log .del {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 3px 7px;
+    font-size: var(--step--1);
+    font-family: var(--body);
+  }
+  .log .del:hover { color: var(--crit); border-color: var(--crit); }
+
+  .empty {
+    color: var(--ink-3);
+    font-size: var(--step--1);
+    padding: 6px 0 2px;
+  }
+
+  details {
+    margin-top: 14px;
+    border-top: 1px solid var(--line-soft);
+    padding-top: 10px;
+  }
+  summary {
+    cursor: pointer;
+    font-size: var(--step--1);
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+  .data-table th, .data-table td {
+    text-align: left;
+    padding: 4px 10px 4px 0;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .data-table th { color: var(--ink); font-weight: 500; }
+  .table-scroll { overflow-x: auto; }
+
+  .settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .settings .hint {
+    grid-column: 1 / -1;
+    font-size: var(--step--1);
+    color: var(--ink-3);
+    margin: 0;
+  }
+
+  footer.note {
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: var(--step--1);
+    color: var(--ink-3);
+    max-width: 62ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <h1>Brew Ledger</h1>
+    <span class="dateline" id="dateline">&nbsp;</span>
+    <span class="storage-note" id="storage-note"><span class="dot"></span> Loading&hellip;</span>
+  </header>
+
+  <div class="banner" id="sample-banner" hidden>
+    <p><strong>Sample data.</strong> These are example cups so you can see the ledger working. Log your first real cup and they disappear.</p>
+    <button class="btn ghost" id="clear-sample" type="button">Start empty</button>
+  </div>
+
+  <div class="columns">
+    <!-- ============ left column ============ -->
+    <div class="stack">
+      <section class="panel" aria-labelledby="log-heading">
+        <h2 id="log-heading">Log a cup</h2>
+
+        <div class="quick" id="quick" role="group" aria-label="Common drinks"></div>
+
+        <div class="field">
+          <label for="drink">Drink</label>
+          <select id="drink"></select>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="size-label">Size</span>
+          <div class="seg" id="size" role="group" aria-labelledby="size-label">
+            <button type="button" data-mult="0.7" aria-pressed="false">Small</button>
+            <button type="button" data-mult="1" aria-pressed="true">Regular</button>
+            <button type="button" data-mult="1.5" aria-pressed="false">Large</button>
+          </div>
+        </div>
+
+        <div class="field row-2">
+          <div>
+            <label for="time">Time</label>
+            <input type="time" id="time">
+          </div>
+          <div>
+            <label for="mg">Caffeine (mg)</label>
+            <input type="number" id="mg" min="0" max="900" step="1" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="readout">
+          <span id="readout-detail">Filter &middot; 240 ml</span>
+          <span class="mg"><span id="readout-mg">95</span> mg</span>
+        </div>
+
+        <button class="btn" id="add" type="button">Add cup</button>
+      </section>
+
+      <section class="panel" aria-labelledby="today-log-heading">
+        <header>
+          <h2 id="today-log-heading">Today&rsquo;s cups</h2>
+          <span class="meta" id="today-count">0 cups</span>
+        </header>
+        <ul class="log" id="today-log"></ul>
+        <p class="empty" id="today-empty" hidden>Nothing logged yet today.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Your limits</h2>
+        <div class="settings">
+          <div>
+            <label for="limit">Daily cap (mg)</label>
+            <input type="number" id="limit" min="50" max="1200" step="10">
+          </div>
+          <div>
+            <label for="bedtime">Bedtime</label>
+            <input type="time" id="bedtime">
+          </div>
+          <p class="hint">400 mg a day is the ceiling health agencies generally cite for healthy adults. Caffeine clears on a roughly 5-hour half-life, so a 4 pm cup is still half in you at 9 pm.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ right column ============ -->
+    <div class="stack">
+      <section class="panel" aria-labelledby="hero-heading">
+        <h2 id="hero-heading">Today</h2>
+        <div class="today">
+          <div>
+            <span class="figure-label">Caffeine consumed</span>
+            <p class="figure"><span class="value" id="today-mg">0</span><span class="unit">mg</span></p>
+            <div class="meter" id="meter"><div class="fill" id="meter-fill" style="width:0%"></div></div>
+            <div class="meter-legend">
+              <span>0</span>
+              <span id="meter-cap">400 mg cap</span>
+            </div>
+            <span class="status ok" id="status">
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="2"></circle></svg>
+              <span id="status-text">Under your cap</span>
+            </span>
+          </div>
+          <div class="split">
+            <div>
+              <span class="figure-label">At bedtime</span>
+              <p class="figure"><span class="value" id="bed-mg">0</span><span class="unit">mg</span></p>
+              <p class="sub" id="bed-sub">still in your system at 23:00</p>
+            </div>
+            <div>
+              <span class="figure-label">Cups today</span>
+              <p class="figure"><span class="value" id="cups-today">0</span></p>
+              <p class="sub" id="last-cup">no cups yet</p>
+            </div>
+            <div>
+              <span class="figure-label">7-day average</span>
+              <p class="figure"><span class="value" id="avg-mg">0</span><span class="unit">mg</span></p>
+              <p class="sub">per day</p>
+            </div>
+            <div>
+              <span class="figure-label">First cup</span>
+              <p class="figure"><span class="value" id="first-cup">&mdash;</span></p>
+              <p class="sub">median start time</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="curve-heading">
+        <header>
+          <h2 id="curve-heading">Caffeine in your system</h2>
+          <span class="meta">5-hour half-life</span>
+        </header>
+        <div class="chart-shell">
+          <svg class="chart" id="curve" viewBox="0 0 700 210" role="img" aria-labelledby="curve-desc"></svg>
+          <div class="tooltip" id="curve-tip" role="status" aria-live="off"></div>
+        </div>
+        <p id="curve-desc" class="sr-only" hidden></p>
+        <div class="legend">
+          <span><i class="swatch"></i> Estimated mg in your bloodstream</span>
+          <span><i class="swatch dash"></i> Bedtime</span>
+        </div>
+        <details>
+          <summary>View today as a table</summary>
+          <div class="table-scroll">
+            <table class="data-table" id="curve-table"></table>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" aria-labelledby="days-heading">
+        <header>
+          <h2 id="days-heading">Last 14 days</h2>
+          <span class="meta" id="days-meta">&nbsp;</span>
+        </header>
+        <div class="chart-shell">
+          <svg class="chart" id="bars" viewBox="0 0 700 250" role="img" aria-labelledby="bars-desc"></svg>
+          <div class="tooltip" id="bars-tip" role="status" aria-live="off"></div>
+        </div>
+        <p id="bars-desc" class="sr-only" hidden></p>
+        <div class="legend">
+          <span><i class="swatch"></i> Daily total</span>
+          <span><i class="swatch dash"></i> Your cap</span>
+        </div>
+        <details>
+          <summary>View 14 days as a table</summary>
+          <div class="table-scroll">
+            <table class="data-table" id="bars-table"></table>
+          </div>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <footer class="note">
+    Caffeine figures are estimates from typical preparations &mdash; a home grinder, a different roast, or a heavy pour will move them. The in-system curve assumes a 45-minute rise to peak and first-order elimination on a 5-hour half-life, which is an average; yours shifts with genetics, medication, and pregnancy. Not medical advice.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ------------------------------------------------------------------ *
+   * Drink presets - caffeine in mg at the stated reference serving.
+   * ------------------------------------------------------------------ */
+  var DRINKS = [
+    { id: "espresso",   name: "Espresso",      group: "Espresso bar", ml: 30,  mg: 63 },
+    { id: "doppio",     name: "Doppio",        group: "Espresso bar", ml: 60,  mg: 126 },
+    { id: "cortado",    name: "Cortado",       group: "Espresso bar", ml: 120, mg: 63 },
+    { id: "cappuccino", name: "Cappuccino",    group: "Espresso bar", ml: 180, mg: 63 },
+    { id: "flatwhite",  name: "Flat white",    group: "Espresso bar", ml: 180, mg: 126 },
+    { id: "latte",      name: "Latte",         group: "Espresso bar", ml: 350, mg: 126 },
+    { id: "americano",  name: "Americano",     group: "Espresso bar", ml: 350, mg: 126 },
+    { id: "filter",     name: "Filter",        group: "Brewed",       ml: 240, mg: 95 },
+    { id: "pourover",   name: "Pour-over",     group: "Brewed",       ml: 240, mg: 110 },
+    { id: "aeropress",  name: "AeroPress",     group: "Brewed",       ml: 240, mg: 110 },
+    { id: "french",     name: "French press",  group: "Brewed",       ml: 240, mg: 107 },
+    { id: "moka",       name: "Moka pot",      group: "Brewed",       ml: 60,  mg: 105 },
+    { id: "coldbrew",   name: "Cold brew",     group: "Cold",         ml: 355, mg: 205 },
+    { id: "icedlatte",  name: "Iced latte",    group: "Cold",         ml: 350, mg: 126 },
+    { id: "instant",    name: "Instant",       group: "Other",        ml: 240, mg: 62 },
+    { id: "decaf",      name: "Decaf",         group: "Other",        ml: 240, mg: 3 }
+  ];
+  var QUICK = ["espresso", "latte", "filter", "coldbrew"];
+  var HALF_LIFE_H = 5;
+  var ABSORB_MIN = 45;   // minutes from sip to peak plasma level
+  var DEFAULTS = { limitMg: 400, bedtime: "23:00" };
+
+  /* ------------------------------------------------------------------ *
+   * State
+   * ------------------------------------------------------------------ */
+  var state = {
+    days: {},                 // "YYYY-MM-DD" -> [drink, ...]
+    prefs: { limitMg: DEFAULTS.limitMg, bedtime: DEFAULTS.bedtime },
+    mode: "local",            // "db" | "local"
+    sample: false,
+    form: { drink: "filter", mult: 1, mgEdited: false }
+  };
+
+  var db = null;
+  var LS_KEY = "brew-ledger-v1";
+
+  /* ------------------------------------------------------------------ *
+   * Helpers
+   * ------------------------------------------------------------------ */
+  function el(id) { return document.getElementById(id); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function dateKey(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function todayKey() { return dateKey(new Date()); }
+
+  function shiftDays(key, delta) {
+    var p = key.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + delta);
+    return dateKey(d);
+  }
+
+  function weekdayOf(key) {
+    var p = key.split("-");
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+  }
+
+  function minutesOf(hhmm) {
+    var p = String(hhmm || "08:00").split(":");
+    return (+p[0]) * 60 + (+p[1] || 0);
+  }
+
+  function fmtTime(hhmm) { return hhmm; }
+
+  function drinkById(id) {
+    for (var i = 0; i < DRINKS.length; i++) if (DRINKS[i].id === id) return DRINKS[i];
+    return DRINKS[7];
+  }
+
+  function dayDrinks(key) { return state.days[key] || []; }
+
+  function dayTotal(key) {
+    return dayDrinks(key).reduce(function (sum, d) { return sum + (d.mg || 0); }, 0);
+  }
+
+  function lastNDays(n) {
+    var out = [], k = todayKey();
+    for (var i = n - 1; i >= 0; i--) out.push(shiftDays(k, -i));
+    return out;
+  }
+
+  // mg still circulating at `atMin` minutes past midnight, from today's cups:
+  // a linear rise to peak over ABSORB_MIN, then first-order elimination.
+  function inSystemAt(drinks, atMin) {
+    var total = 0;
+    for (var i = 0; i < drinks.length; i++) {
+      var t = minutesOf(drinks[i].at);
+      if (t > atMin) continue;
+      var since = atMin - t;
+      if (since < ABSORB_MIN) {
+        total += drinks[i].mg * (since / ABSORB_MIN);
+      } else {
+        total += drinks[i].mg * Math.pow(0.5, (since - ABSORB_MIN) / 60 / HALF_LIFE_H);
+      }
+    }
+    return total;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Persistence
+   * ------------------------------------------------------------------ */
+  function saveLocal() {
+    try {
+      window.localStorage.setItem(LS_KEY, JSON.stringify({ days: state.days, prefs: state.prefs }));
+    } catch (e) { /* private mode, blocked storage - nothing to do */ }
+  }
+
+  function loadLocal() {
+    try {
+      var raw = window.localStorage.getItem(LS_KEY);
+      if (!raw) return false;
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.days) {
+        state.days = parsed.days;
+        if (parsed.prefs) state.prefs = parsed.prefs;
+        return Object.keys(parsed.days).length > 0;
+      }
+    } catch (e) { /* corrupt payload - fall back to empty */ }
+    return false;
+  }
+
+  function persistDay(key) {
+    saveLocal();
+    if (!db) return;
+    var drinks = dayDrinks(key);
+    var ref = db.doc("days/" + key);
+    var op = drinks.length ? ref.set({ date: key, drinks: drinks }) : ref.delete();
+    op.catch(function (err) { reportWriteError(err); });
+  }
+
+  function persistPrefs() {
+    saveLocal();
+    if (!db) return;
+    db.doc("settings/prefs").set(state.prefs).catch(function (err) { reportWriteError(err); });
+  }
+
+  function reportWriteError(err) {
+    var code = err && err.code;
+    var note = el("storage-note");
+    if (code === "quota_exceeded") {
+      note.innerHTML = '<span class="dot is-local"></span> Storage full &mdash; delete some older days';
+    } else if (code === "revoked" || code === "not_granted") {
+      db = null;
+      state.mode = "local";
+      renderStorageNote();
+    } else {
+      note.innerHTML = '<span class="dot is-local"></span> Last change saved on this device only';
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Sample data - shown only while the ledger is empty, never written.
+   * ------------------------------------------------------------------ */
+  function buildSample() {
+    var pattern = [
+      [["espresso", "07:20", 63], ["latte", "10:05", 126], ["filter", "14:40", 95]],
+      [["filter", "07:45", 95], ["doppio", "11:30", 126], ["coldbrew", "15:10", 205]],
+      [["latte", "08:10", 126], ["espresso", "13:20", 63]],
+      [["filter", "07:05", 95], ["filter", "09:50", 95], ["cortado", "12:15", 63], ["espresso", "16:30", 63]],
+      [["coldbrew", "09:30", 205], ["latte", "13:00", 126]],
+      [["pourover", "09:15", 110], ["moka", "15:45", 105]],
+      [["espresso", "08:40", 63], ["filter", "11:10", 95], ["decaf", "20:00", 3]]
+    ];
+    var days = {}, keys = lastNDays(14);
+    for (var i = 0; i < keys.length; i++) {
+      var row = pattern[i % pattern.length];
+      var drinks = [];
+      for (var j = 0; j < row.length; j++) {
+        var d = drinkById(row[j][0]);
+        drinks.push({ id: "s" + i + "-" + j, drink: d.id, name: d.name, ml: d.ml, at: row[j][1], mg: row[j][2] });
+      }
+      // today is partial - only the cups whose time has already passed
+      if (i === keys.length - 1) {
+        var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+        drinks = drinks.filter(function (x) { return minutesOf(x.at) <= nowMin; });
+      }
+      days[keys[i]] = drinks;
+    }
+    return days;
+  }
+
+  function showSample() {
+    state.sample = true;
+    state.days = buildSample();
+    el("sample-banner").hidden = false;
+  }
+
+  function clearSample() {
+    if (!state.sample) return;
+    state.sample = false;
+    state.days = {};
+    el("sample-banner").hidden = true;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Form
+   * ------------------------------------------------------------------ */
+  function buildForm() {
+    var quick = el("quick");
+    QUICK.forEach(function (id) {
+      var d = drinkById(id);
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = d.name;
+      b.setAttribute("aria-pressed", String(id === state.form.drink));
+      b.dataset.id = id;
+      b.addEventListener("click", function () {
+        state.form.drink = id;
+        state.form.mgEdited = false;
+        el("drink").value = id;
+        syncForm();
+      });
+      quick.appendChild(b);
+    });
+
+    var sel = el("drink"), groups = {};
+    DRINKS.forEach(function (d) {
+      if (!groups[d.group]) {
+        groups[d.group] = document.createElement("optgroup");
+        groups[d.group].label = d.group;
+        sel.appendChild(groups[d.group]);
+      }
+      var o = document.createElement("option");
+      o.value = d.id;
+      o.textContent = d.name;
+      groups[d.group].appendChild(o);
+    });
+    sel.value = state.form.drink;
+    sel.addEventListener("change", function () {
+      state.form.drink = sel.value;
+      state.form.mgEdited = false;
+      syncForm();
+    });
+
+    Array.prototype.forEach.call(el("size").children, function (b) {
+      b.addEventListener("click", function () {
+        state.form.mult = parseFloat(b.dataset.mult);
+        state.form.mgEdited = false;
+        syncForm();
+      });
+    });
+
+    el("mg").addEventListener("input", function () {
+      state.form.mgEdited = true;
+      el("readout-mg").textContent = el("mg").value || "0";
+    });
+
+    el("add").addEventListener("click", addCup);
+    el("clear-sample").addEventListener("click", function () {
+      clearSample();
+      saveLocal();
+      render();
+    });
+
+    var now = new Date();
+    el("time").value = pad(now.getHours()) + ":" + pad(now.getMinutes());
+
+    el("limit").addEventListener("change", function () {
+      var v = parseInt(el("limit").value, 10);
+      state.prefs.limitMg = isFinite(v) && v > 0 ? v : DEFAULTS.limitMg;
+      el("limit").value = state.prefs.limitMg;
+      persistPrefs();
+      render();
+    });
+    el("bedtime").addEventListener("change", function () {
+      state.prefs.bedtime = el("bedtime").value || DEFAULTS.bedtime;
+      persistPrefs();
+      render();
+    });
+
+    syncForm();
+  }
+
+  function syncForm() {
+    var d = drinkById(state.form.drink);
+    var mult = state.form.mult;
+    var mg = Math.round(d.mg * mult);
+    var ml = Math.round(d.ml * mult);
+
+    Array.prototype.forEach.call(el("quick").children, function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.id === state.form.drink));
+    });
+    Array.prototype.forEach.call(el("size").children, function (b) {
+      b.setAttribute("aria-pressed", String(parseFloat(b.dataset.mult) === mult));
+    });
+
+    if (!state.form.mgEdited) el("mg").value = mg;
+    el("readout-detail").textContent = d.name + " · " + ml + " ml";
+    el("readout-mg").textContent = el("mg").value || "0";
+  }
+
+  function addCup() {
+    var d = drinkById(state.form.drink);
+    var mg = parseInt(el("mg").value, 10);
+    if (!isFinite(mg) || mg < 0) mg = Math.round(d.mg * state.form.mult);
+    var at = el("time").value || (pad(new Date().getHours()) + ":" + pad(new Date().getMinutes()));
+
+    clearSample();
+
+    var key = todayKey();
+    var drinks = dayDrinks(key).slice();
+    drinks.push({
+      id: String(Date.now()) + "-" + Math.random().toString(36).slice(2, 7),
+      drink: d.id,
+      name: d.name,
+      ml: Math.round(d.ml * state.form.mult),
+      at: at,
+      mg: mg
+    });
+    drinks.sort(function (a, b) { return minutesOf(a.at) - minutesOf(b.at); });
+    state.days[key] = drinks;
+
+    persistDay(key);
+    state.form.mgEdited = false;
+    var now = new Date();
+    el("time").value = pad(now.getHours()) + ":" + pad(now.getMinutes());
+    syncForm();
+    render();
+  }
+
+  function removeCup(id) {
+    var key = todayKey();
+    if (state.sample) { clearSample(); render(); return; }
+    state.days[key] = dayDrinks(key).filter(function (d) { return d.id !== id; });
+    persistDay(key);
+    render();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Charts
+   * ------------------------------------------------------------------ */
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  function svgEl(name, attrs) {
+    var node = document.createElementNS(SVG_NS, name);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) node.setAttribute(k, attrs[k]);
+    return node;
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 100;
+    var step = v > 800 ? 200 : v > 400 ? 100 : 50;
+    return Math.ceil(v / step) * step;
+  }
+
+  /* ---- today's decay curve ---- */
+  function renderCurve() {
+    var svg = el("curve");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var W = 700, H = 210, padL = 44, padR = 16, padT = 14, padB = 30;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+
+    var drinks = dayDrinks(todayKey());
+    var startMin = 5 * 60, endMin = 25 * 60;   // 05:00 through 01:00
+    var bedMin = minutesOf(state.prefs.bedtime);
+    if (bedMin < 4 * 60) bedMin += 24 * 60;    // a 01:00 bedtime belongs to tonight
+
+    var pts = [], peak = 0, stepMin = 5;
+    for (var m = startMin; m <= endMin; m += stepMin) {
+      var v = inSystemAt(drinks, m);
+      pts.push([m, v]);
+      if (v > peak) peak = v;
+    }
+    var maxY = niceMax(Math.max(peak, 50));
+
+    function sx(m) { return x0 + (m - startMin) / (endMin - startMin) * (x1 - x0); }
+    function sy(v) { return y1 - (v / maxY) * (y1 - y0); }
+
+    // grid + y axis
+    for (var g = 0; g <= 4; g++) {
+      var val = maxY * g / 4, y = sy(val);
+      svg.appendChild(svgEl("line", {
+        x1: x0, x2: x1, y1: y, y2: y,
+        stroke: "var(--line-soft)", "stroke-width": 1
+      }));
+      var lbl = svgEl("text", { x: x0 - 8, y: y + 4, "text-anchor": "end", "class": "tick" });
+      lbl.textContent = g === 4 ? Math.round(val) + " mg" : Math.round(val);
+      svg.appendChild(lbl);
+    }
+
+    // x axis - every 3 hours
+    for (var h = 6; h <= 24; h += 3) {
+      var xm = sx(h * 60);
+      var t = svgEl("text", { x: xm, y: y1 + 18, "text-anchor": "middle", "class": "tick" });
+      t.textContent = (h % 24 === 0 ? "00" : pad(h % 24)) + ":00";
+      svg.appendChild(t);
+    }
+    svg.appendChild(svgEl("line", { x1: x0, x2: x1, y1: y1, y2: y1, stroke: "var(--line)", "stroke-width": 1 }));
+
+    // area + line
+    var dLine = "", dArea = "M" + sx(startMin) + " " + y1;
+    pts.forEach(function (p, i) {
+      var X = sx(p[0]), Y = sy(p[1]);
+      dLine += (i ? "L" : "M") + X.toFixed(1) + " " + Y.toFixed(1);
+      dArea += "L" + X.toFixed(1) + " " + Y.toFixed(1);
+    });
+    dArea += "L" + sx(endMin) + " " + y1 + "Z";
+
+    svg.appendChild(svgEl("path", { d: dArea, fill: "var(--accent)", "fill-opacity": ".12", stroke: "none" }));
+    svg.appendChild(svgEl("path", {
+      d: dLine, fill: "none", stroke: "var(--accent)",
+      "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"
+    }));
+
+    // bedtime marker
+    if (bedMin >= startMin && bedMin <= endMin) {
+      var bx = sx(bedMin);
+      svg.appendChild(svgEl("line", {
+        x1: bx, x2: bx, y1: y0, y2: y1,
+        stroke: "var(--crit)", "stroke-width": 2, "stroke-dasharray": "4 4"
+      }));
+      var bedVal = inSystemAt(drinks, bedMin);
+      var bd = svgEl("circle", {
+        cx: bx, cy: sy(bedVal), r: 4.5,
+        fill: "var(--crit)", stroke: "var(--surface)", "stroke-width": 2
+      });
+      svg.appendChild(bd);
+      var anchor = bx > x1 - 90 ? "end" : "start";
+      var bl = svgEl("text", {
+        x: bx + (anchor === "end" ? -8 : 8), y: sy(bedVal) - 10,
+        "text-anchor": anchor, "class": "bar-label", fill: "var(--crit)"
+      });
+      bl.textContent = Math.round(bedVal) + " mg at bed";
+      svg.appendChild(bl);
+    }
+
+    // now marker
+    var nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    if (nowMin >= startMin && nowMin <= endMin) {
+      var nx = sx(nowMin);
+      svg.appendChild(svgEl("line", {
+        x1: nx, x2: nx, y1: y0, y2: y1, stroke: "var(--ink-3)", "stroke-width": 1
+      }));
+      var nl = svgEl("text", { x: nx + 5, y: y0 + 10, "class": "tick-strong" });
+      nl.textContent = "now";
+      svg.appendChild(nl);
+    }
+
+    // cup markers along the baseline
+    drinks.forEach(function (dk) {
+      var m = minutesOf(dk.at);
+      if (m < startMin || m > endMin) return;
+      svg.appendChild(svgEl("circle", {
+        cx: sx(m), cy: y1, r: 3.5,
+        fill: "var(--accent)", stroke: "var(--surface)", "stroke-width": 2
+      }));
+    });
+
+    svg.appendChild(svgEl("rect", {
+      x: x0, y: y0, width: Math.max(1, x1 - x0), height: Math.max(1, y1 - y0),
+      fill: "transparent", "pointer-events": "all", id: "curve-hit"
+    }));
+
+    var desc = "Estimated caffeine in the bloodstream through the day, peaking at "
+      + Math.round(peak) + " milligrams.";
+    el("curve-desc").textContent = desc;
+    svg.setAttribute("aria-label", desc);
+
+    attachCurveHover(svg, pts, sx, sy, startMin, endMin, x0, x1);
+    renderCurveTable(pts);
+  }
+
+  function attachCurveHover(svg, pts, sx, sy, startMin, endMin, x0, x1) {
+    var tip = el("curve-tip");
+    var marker = svgEl("circle", {
+      r: 5, fill: "var(--accent)", stroke: "var(--surface)", "stroke-width": 2, opacity: 0
+    });
+    svg.appendChild(marker);
+
+    function move(ev) {
+      var rect = svg.getBoundingClientRect();
+      var scale = 700 / rect.width;
+      var vx = (ev.clientX - rect.left) * scale;
+      if (vx < x0 || vx > x1) return hide();
+      var m = startMin + (vx - x0) / (x1 - x0) * (endMin - startMin);
+      var idx = Math.round((m - startMin) / (endMin - startMin) * (pts.length - 1));
+      idx = Math.max(0, Math.min(pts.length - 1, idx));
+      var p = pts[idx];
+      var hh = Math.floor(p[0] / 60) % 24;
+
+      marker.setAttribute("cx", sx(p[0]));
+      marker.setAttribute("cy", sy(p[1]));
+      marker.setAttribute("opacity", 1);
+
+      tip.innerHTML = '<div class="tt-title">' + pad(hh) + ":" + pad(p[0] % 60) + '</div>'
+        + '<div class="tt-value">' + Math.round(p[1]) + " mg in system</div>";
+      tip.classList.add("on");
+      tip.style.left = (sx(p[0]) / scale) + "px";
+      tip.style.top = (sy(p[1]) / scale - 10) + "px";
+    }
+
+    function hide() {
+      tip.classList.remove("on");
+      marker.setAttribute("opacity", 0);
+    }
+
+    svg.addEventListener("mousemove", move);
+    svg.addEventListener("mouseleave", hide);
+  }
+
+  function renderCurveTable(pts) {
+    var rows = ["<tr><th>Time</th><th>mg in system</th></tr>"];
+    for (var i = 0; i < pts.length; i += 12) {   // hourly
+      var hh = Math.floor(pts[i][0] / 60) % 24;
+      rows.push("<tr><td>" + pad(hh) + ":" + pad(pts[i][0] % 60) + "</td><td>"
+        + Math.round(pts[i][1]) + "</td></tr>");
+    }
+    el("curve-table").innerHTML = rows.join("");
+  }
+
+  /* ---- 14-day bars ---- */
+  function renderBars() {
+    var svg = el("bars");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var W = 700, H = 250, padL = 44, padR = 16, padT = 22, padB = 42;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+
+    var keys = lastNDays(14);
+    var totals = keys.map(dayTotal);
+    var cap = state.prefs.limitMg;
+    var maxY = niceMax(Math.max(Math.max.apply(null, totals), cap * 1.1));
+
+    function sy(v) { return y1 - (v / maxY) * (y1 - y0); }
+
+    var slot = (x1 - x0) / keys.length;
+    var barW = Math.min(30, slot - 6);
+
+    for (var g = 0; g <= 4; g++) {
+      var val = maxY * g / 4, y = sy(val);
+      svg.appendChild(svgEl("line", { x1: x0, x2: x1, y1: y, y2: y, stroke: "var(--line-soft)", "stroke-width": 1 }));
+      var lb = svgEl("text", { x: x0 - 8, y: y + 4, "text-anchor": "end", "class": "tick" });
+      lb.textContent = g === 4 ? Math.round(val) + " mg" : Math.round(val);
+      svg.appendChild(lb);
+    }
+
+    keys.forEach(function (key, i) {
+      var v = totals[i];
+      var cx = x0 + slot * i + slot / 2;
+      var bx = cx - barW / 2;
+      var over = v > cap;
+
+      if (v > 0) {
+        var h = Math.max(3, y1 - sy(v));
+        svg.appendChild(svgEl("rect", {
+          x: bx.toFixed(1), y: sy(v).toFixed(1), width: barW.toFixed(1), height: h.toFixed(1),
+          rx: 4, ry: 4, fill: "var(--accent)"
+        }));
+        // square off the baseline end
+        svg.appendChild(svgEl("rect", {
+          x: bx.toFixed(1), y: (y1 - Math.min(4, h)).toFixed(1),
+          width: barW.toFixed(1), height: Math.min(4, h).toFixed(1), fill: "var(--accent)"
+        }));
+      } else {
+        svg.appendChild(svgEl("line", {
+          x1: bx, x2: bx + barW, y1: y1, y2: y1, stroke: "var(--line)", "stroke-width": 2
+        }));
+      }
+
+      if (over) {
+        var caret = svgEl("path", {
+          d: "M" + (cx - 5) + " " + (sy(v) - 8) + "L" + cx + " " + (sy(v) - 15) + "L" + (cx + 5) + " " + (sy(v) - 8) + "Z",
+          fill: "var(--crit)"
+        });
+        svg.appendChild(caret);
+        var vl = svgEl("text", {
+          x: cx, y: sy(v) - 19, "text-anchor": "middle", "class": "bar-label", fill: "var(--crit)"
+        });
+        vl.textContent = Math.round(v);
+        svg.appendChild(vl);
+      }
+
+      var wd = svgEl("text", { x: cx, y: y1 + 16, "text-anchor": "middle", "class": "tick" });
+      wd.textContent = weekdayOf(key).charAt(0);
+      svg.appendChild(wd);
+
+      if (i === 0 || i === keys.length - 1 || i === 7) {
+        var dl = svgEl("text", { x: cx, y: y1 + 31, "text-anchor": "middle", "class": "tick" });
+        dl.textContent = key.slice(5).replace("-", "/");
+        svg.appendChild(dl);
+      }
+
+      var hit = svgEl("rect", {
+        x: (x0 + slot * i).toFixed(1), y: y0, width: slot.toFixed(1), height: (y1 - y0),
+        fill: "transparent", "pointer-events": "all"
+      });
+      hit.dataset.index = i;
+      svg.appendChild(hit);
+    });
+
+    // cap line, drawn over the bars
+    var capY = sy(cap);
+    svg.appendChild(svgEl("line", {
+      x1: x0, x2: x1, y1: capY, y2: capY,
+      stroke: "var(--crit)", "stroke-width": 2, "stroke-dasharray": "5 4"
+    }));
+    var capLabel = svgEl("text", { x: x1, y: capY - 6, "text-anchor": "end", "class": "bar-label", fill: "var(--crit)" });
+    capLabel.textContent = cap + " mg cap";
+    svg.appendChild(capLabel);
+
+    svg.appendChild(svgEl("line", { x1: x0, x2: x1, y1: y1, y2: y1, stroke: "var(--line)", "stroke-width": 1 }));
+
+    var overDays = totals.filter(function (v) { return v > cap; }).length;
+    var logged = totals.filter(function (v) { return v > 0; }).length;
+    el("days-meta").textContent = logged + " days logged · " + overDays + " over cap";
+
+    var desc = "Daily caffeine totals for the last 14 days against a " + cap
+      + " milligram cap; " + overDays + " days over.";
+    el("bars-desc").textContent = desc;
+    svg.setAttribute("aria-label", desc);
+
+    attachBarsHover(svg, keys, totals, slot, x0, sy);
+    renderBarsTable(keys, totals, cap);
+  }
+
+  function attachBarsHover(svg, keys, totals, slot, x0, sy) {
+    var tip = el("bars-tip");
+
+    svg.addEventListener("mousemove", function (ev) {
+      var target = ev.target;
+      if (!target.dataset || target.dataset.index === undefined) return;
+      var i = +target.dataset.index;
+      var rect = svg.getBoundingClientRect();
+      var scale = 700 / rect.width;
+      var cx = x0 + slot * i + slot / 2;
+      var cups = dayDrinks(keys[i]).length;
+
+      tip.innerHTML = '<div class="tt-title">' + weekdayOf(keys[i]) + " " + keys[i].slice(5).replace("-", "/") + '</div>'
+        + '<div class="tt-value">' + Math.round(totals[i]) + " mg · " + cups + (cups === 1 ? " cup" : " cups") + "</div>";
+      tip.classList.add("on");
+      tip.style.left = (cx / scale) + "px";
+      tip.style.top = (Math.max(24, sy(totals[i])) / scale - 12) + "px";
+    });
+
+    svg.addEventListener("mouseleave", function () { tip.classList.remove("on"); });
+  }
+
+  function renderBarsTable(keys, totals, cap) {
+    var rows = ["<tr><th>Day</th><th>Cups</th><th>mg</th><th>vs cap</th></tr>"];
+    for (var i = keys.length - 1; i >= 0; i--) {
+      var over = totals[i] > cap;
+      rows.push("<tr><td>" + weekdayOf(keys[i]) + " " + keys[i] + "</td><td>"
+        + dayDrinks(keys[i]).length + "</td><td>" + Math.round(totals[i]) + "</td><td>"
+        + (over ? "over" : "ok") + "</td></tr>");
+    }
+    el("bars-table").innerHTML = rows.join("");
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Render
+   * ------------------------------------------------------------------ */
+  function renderStorageNote() {
+    var note = el("storage-note");
+    if (state.mode === "db") {
+      note.innerHTML = '<span class="dot"></span> Saved to your ledger';
+    } else {
+      note.innerHTML = '<span class="dot is-local"></span> Saved on this device only';
+    }
+  }
+
+  function renderToday() {
+    var key = todayKey();
+    var drinks = dayDrinks(key);
+    var total = dayTotal(key);
+    var cap = state.prefs.limitMg;
+
+    el("today-mg").textContent = Math.round(total);
+    el("cups-today").textContent = drinks.length;
+    el("meter-cap").textContent = cap + " mg cap";
+
+    var pct = Math.min(100, (total / cap) * 100);
+    el("meter-fill").style.width = pct + "%";
+    el("meter").classList.toggle("is-over", total > cap);
+
+    var status = el("status"), text = el("status-text");
+    status.classList.remove("ok", "warn", "crit");
+    if (total > cap) {
+      status.classList.add("crit");
+      text.textContent = Math.round(total - cap) + " mg over your cap";
+    } else if (total > cap * 0.75) {
+      status.classList.add("warn");
+      text.textContent = Math.round(cap - total) + " mg left today";
+    } else {
+      status.classList.add("ok");
+      text.textContent = Math.round(cap - total) + " mg left today";
+    }
+
+    var bedMin = minutesOf(state.prefs.bedtime);
+    if (bedMin < 4 * 60) bedMin += 24 * 60;
+    var bedVal = inSystemAt(drinks, bedMin);
+    el("bed-mg").textContent = Math.round(bedVal);
+    el("bed-sub").textContent = "still in you at " + fmtTime(state.prefs.bedtime);
+
+    el("last-cup").textContent = drinks.length
+      ? "last at " + drinks[drinks.length - 1].at
+      : "no cups yet";
+
+    var keys = lastNDays(7);
+    var sum = 0, counted = 0;
+    keys.forEach(function (k) {
+      var t = dayTotal(k);
+      if (t > 0 || k === todayKey()) { sum += t; counted++; }
+    });
+    el("avg-mg").textContent = counted ? Math.round(sum / counted) : 0;
+
+    var firsts = [];
+    lastNDays(14).forEach(function (k) {
+      var ds = dayDrinks(k);
+      if (ds.length) firsts.push(minutesOf(ds[0].at));
+    });
+    if (firsts.length) {
+      firsts.sort(function (a, b) { return a - b; });
+      var med = firsts[Math.floor(firsts.length / 2)];
+      el("first-cup").textContent = pad(Math.floor(med / 60)) + ":" + pad(med % 60);
+    } else {
+      el("first-cup").textContent = "—";
+    }
+
+    var list = el("today-log");
+    list.innerHTML = "";
+    el("today-empty").hidden = drinks.length > 0;
+    el("today-count").textContent = drinks.length + (drinks.length === 1 ? " cup" : " cups");
+
+    drinks.forEach(function (d) {
+      var li = document.createElement("li");
+      li.innerHTML = '<span class="time">' + d.at + '</span>'
+        + '<span class="name">' + d.name + '<small>' + d.ml + ' ml</small></span>'
+        + '<span class="mg">' + d.mg + ' mg</span>';
+      var btn = document.createElement("button");
+      btn.className = "del";
+      btn.type = "button";
+      btn.textContent = "Remove";
+      btn.setAttribute("aria-label", "Remove " + d.name + " at " + d.at);
+      btn.addEventListener("click", function () { removeCup(d.id); });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  function render() {
+    renderToday();
+    renderCurve();
+    renderBars();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Boot
+   * ------------------------------------------------------------------ */
+  function initChrome() {
+    var now = new Date();
+    el("dateline").textContent = now.toLocaleDateString(undefined, {
+      weekday: "long", month: "long", day: "numeric"
+    });
+    el("limit").value = state.prefs.limitMg;
+    el("bedtime").value = state.prefs.bedtime;
+  }
+
+  var hadLocal = loadLocal();
+  initChrome();
+  buildForm();
+  if (!hadLocal) showSample();
+  renderStorageNote();
+  render();
+
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("db").then(function (store) {
+      if (!store) return;
+      db = store;
+      state.mode = "db";
+      renderStorageNote();
+
+      db.doc("settings/prefs").onSnapshot(function (snap) {
+        if (!snap.exists) return;
+        var d = snap.data() || {};
+        state.prefs.limitMg = d.limitMg || DEFAULTS.limitMg;
+        state.prefs.bedtime = d.bedtime || DEFAULTS.bedtime;
+        el("limit").value = state.prefs.limitMg;
+        el("bedtime").value = state.prefs.bedtime;
+        render();
+      }, function () { /* listener died - the page keeps working locally */ });
+
+      db.collection("days").orderBy("date", "desc").limit(120).onSnapshot(function (snap) {
+        var days = {};
+        snap.docs.forEach(function (doc) {
+          var d = doc.data() || {};
+          if (Array.isArray(d.drinks)) days[doc.id] = d.drinks;
+        });
+        if (Object.keys(days).length === 0) {
+          if (!state.sample && !hadLocal) showSample();
+        } else {
+          clearSample();
+          state.days = days;
+          saveLocal();
+        }
+        render();
+      }, function (err) {
+        db = null;
+        state.mode = "local";
+        renderStorageNote();
+        if (err && err.code) reportWriteError(err);
+      });
+    }).catch(function () { /* db stays null; local mode already rendered */ });
+  }
+})();
+</script>
