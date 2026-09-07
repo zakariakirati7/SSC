@@ -1,0 +1,315 @@
+<title>Brew Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #E8EAE3;
+    --surface: #F7F8F4;
+    --sunken: #EDEFE8;
+    --ink: #14180F;
+    --ink-2: #4F5648;
+    --ink-3: #7B8272;
+    --line: #D6DACD;
+    --line-soft: #E2E5DA;
+    --accent: #0F7D50;
+    --accent-text: #0F7D50;
+    --accent-tint: #DCEBE1;
+    --warn: #9A5A08;
+    --warn-tint: #F4E7D2;
+
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body: "Karla", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #101208;
+      --surface: #1B1E17;
+      --sunken: #16190F;
+      --ink: #F0F2EA;
+      --ink-2: #A9B0A0;
+      --ink-3: #79806F;
+      --line: #2E3327;
+      --line-soft: #23271D;
+      --accent: #008C55;
+      --accent-text: #59C48D;
+      --accent-tint: #16301F;
+      --warn: #DDA02F;
+      --warn-tint: #2E2512;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101208;
+    --surface: #1B1E17;
+    --sunken: #16190F;
+    --ink: #F0F2EA;
+    --ink-2: #A9B0A0;
+    --ink-3: #79806F;
+    --line: #2E3327;
+    --line-soft: #23271D;
+    --accent: #008C55;
+    --accent-text: #59C48D;
+    --accent-tint: #16301F;
+    --warn: #DDA02F;
+    --warn-tint: #2E2512;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: .9375rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 56px 20px 72px;
+  }
+
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 26px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 2.125rem;
+    line-height: 1;
+    letter-spacing: -.02em;
+    margin: 0;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: .8125rem;
+    color: var(--ink-3);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .lede {
+    font-size: 1.125rem;
+    color: var(--ink-2);
+    margin: 0 0 26px;
+    text-wrap: pretty;
+  }
+
+  .go {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 700;
+    font-size: 1.0625rem;
+    color: #fff;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-decoration: none;
+  }
+  .go:hover { filter: brightness(1.08); }
+  .go:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+  .go svg { flex: none; }
+
+  .url {
+    font-family: var(--mono);
+    font-size: .8125rem;
+    color: var(--ink-3);
+    margin: 12px 0 0;
+    word-break: break-all;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 34px;
+  }
+
+  .panel h2 {
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 0 0 12px;
+  }
+
+  ol {
+    margin: 0 0 14px;
+    padding-left: 20px;
+    color: var(--ink-2);
+    font-size: .875rem;
+  }
+  ol li { margin-bottom: 5px; }
+  ol li:last-child { margin-bottom: 0; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .8125rem;
+    background: var(--sunken);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  textarea {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    resize: vertical;
+  }
+
+  .btn {
+    font-family: var(--body);
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--ink-2);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-top: 8px;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--ink-3); color: var(--ink); }
+  .btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+  .status {
+    margin: 8px 0 0;
+    font-size: .8125rem;
+    min-height: 1.2em;
+    color: var(--accent-text);
+  }
+
+  .none {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 34px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--warn);
+    border-radius: 10px;
+    background: var(--warn-tint);
+    font-size: .875rem;
+    color: var(--ink-2);
+  }
+
+  footer {
+    margin-top: 34px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: .8125rem;
+    color: var(--ink-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <h1>Brew Ledger</h1>
+    <span class="tag">Moved</span>
+  </header>
+
+  <p class="lede">The coffee tracker now lives on the open web, so anyone with the link can use it &mdash; no sign-in, no organization.</p>
+
+  <a class="go" href="https://zakariakirati7.github.io/SSC/">
+    Open Brew Ledger
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </a>
+  <p class="url">zakariakirati7.github.io/SSC/</p>
+
+  <section class="panel" id="carry" hidden>
+    <h2>Take your log with you</h2>
+    <ol>
+      <li>Copy the text below &mdash; it is every cup you logged here.</li>
+      <li>Open the new site and expand <code>Backup &amp; restore</code>, at the bottom of <em>Your limits</em>.</li>
+      <li>Paste it in and press <code>Restore from text</code>.</li>
+    </ol>
+    <textarea id="ledger" rows="5" spellcheck="false" readonly aria-label="Your logged cups, as backup text"></textarea>
+    <button class="btn" id="copy" type="button">Copy</button>
+    <p class="status" id="status" role="status"></p>
+  </section>
+
+  <p class="none" id="nothing" hidden>
+    <span>Nothing was logged in this browser, so there is nothing to carry over &mdash; just open the new site and start there.</span>
+  </p>
+
+  <footer>This page stays put, so an old bookmark still finds its way.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var raw = null;
+  try {
+    raw = window.localStorage.getItem("brew-ledger-v1");
+  } catch (e) { /* storage blocked - treated as nothing logged */ }
+
+  var cups = 0;
+  if (raw) {
+    try {
+      var days = (JSON.parse(raw) || {}).days || {};
+      for (var k in days) {
+        if (days.hasOwnProperty(k) && Array.isArray(days[k])) cups += days[k].length;
+      }
+    } catch (e) { raw = null; }
+  }
+
+  if (!raw || !cups) {
+    document.getElementById("nothing").hidden = false;
+    return;
+  }
+
+  document.getElementById("carry").hidden = false;
+  var box = document.getElementById("ledger");
+  box.value = raw;
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var status = document.getElementById("status");
+    box.removeAttribute("readonly");
+    box.select();
+    box.setAttribute("readonly", "");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(box.value).then(
+        function () { status.textContent = "Copied " + cups + (cups === 1 ? " cup" : " cups") + " to your clipboard."; },
+        function () { status.textContent = "Select the text above and copy it."; }
+      );
+    } else {
+      status.textContent = "Select the text above and copy it.";
+    }
+  });
+})();
+</script>

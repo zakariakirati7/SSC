@@ -571,6 +571,34 @@
     margin: 0;
   }
 
+  #backup-text {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    resize: vertical;
+  }
+
+  .backup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .backup-status {
+    margin: 8px 0 0;
+    font-size: var(--step--1);
+    min-height: 1.2em;
+    color: var(--accent-text);
+  }
+  .backup-status.bad { color: var(--crit); }
+
   footer.note {
     margin-top: 26px;
     padding-top: 14px;
@@ -660,6 +688,16 @@
           </div>
           <p class="hint">400 mg a day is the ceiling health agencies generally cite for healthy adults. Caffeine clears on a roughly 5-hour half-life, so a 4 pm cup is still half in you at 9 pm.</p>
         </div>
+        <details>
+          <summary>Backup &amp; restore</summary>
+          <p class="hint" style="margin:10px 0">Your whole ledger as text. Keep a copy somewhere safe, or paste in a backup from another browser and restore it.</p>
+          <textarea id="backup-text" rows="4" spellcheck="false" aria-label="Ledger backup text"></textarea>
+          <div class="backup-actions">
+            <button class="btn ghost" id="backup-copy" type="button">Copy</button>
+            <button class="btn ghost" id="backup-restore" type="button">Restore from text</button>
+          </div>
+          <p class="backup-status" id="backup-status" role="status"></p>
+        </details>
       </section>
     </div>
 
@@ -1394,6 +1432,122 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * Backup and restore - the ledger as portable text.
+   * ------------------------------------------------------------------ */
+  function ledgerJSON() {
+    return JSON.stringify({ days: state.sample ? {} : state.days, prefs: state.prefs }, null, 1);
+  }
+
+  function backupStatus(msg, bad) {
+    var node = el("backup-status");
+    node.textContent = msg;
+    node.classList.toggle("bad", !!bad);
+  }
+
+  // A restored day is merged, never dropped: cups already present (same id)
+  // stay put, and anything new is folded in and re-sorted by time.
+  function mergeDays(incoming) {
+    var added = 0, touched = 0;
+    for (var key in incoming) {
+      if (!incoming.hasOwnProperty(key)) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+      var cups = incoming[key];
+      if (!Array.isArray(cups)) continue;
+
+      var existing = (state.days[key] || []).slice();
+      var seen = {};
+      existing.forEach(function (c) { seen[c.id] = true; });
+
+      var before = existing.length;
+      cups.forEach(function (c) {
+        if (!c || typeof c !== "object") return;
+        var mg = Number(c.mg);
+        if (!isFinite(mg) || mg < 0) return;
+        if (typeof c.at !== "string" || !/^\d{1,2}:\d{2}$/.test(c.at)) return;
+        var id = String(c.id || (key + "-" + c.at + "-" + mg));
+        if (seen[id]) return;
+        seen[id] = true;
+        existing.push({
+          id: id,
+          drink: String(c.drink || "filter"),
+          name: String(c.name || drinkById(c.drink).name),
+          ml: Number(c.ml) || 0,
+          at: c.at,
+          mg: Math.round(mg)
+        });
+      });
+
+      if (existing.length !== before) {
+        existing.sort(function (a, b) { return minutesOf(a.at) - minutesOf(b.at); });
+        state.days[key] = existing;
+        added += existing.length - before;
+        touched++;
+      } else if (!state.days[key]) {
+        state.days[key] = existing;
+      }
+    }
+    return { cups: added, days: touched };
+  }
+
+  function restoreBackup() {
+    var raw = el("backup-text").value.trim();
+    if (!raw) return backupStatus("Paste a backup into the box first.", true);
+
+    var parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return backupStatus("That is not valid backup text - copy the whole thing, including the braces.", true);
+    }
+    if (!parsed || typeof parsed !== "object" || !parsed.days || typeof parsed.days !== "object") {
+      return backupStatus("No ledger found in that text.", true);
+    }
+
+    var wasSample = state.sample;
+    clearSample();
+    if (wasSample) state.days = {};
+
+    var result = mergeDays(parsed.days);
+
+    if (parsed.prefs && typeof parsed.prefs === "object") {
+      var lim = parseInt(parsed.prefs.limitMg, 10);
+      if (isFinite(lim) && lim > 0) state.prefs.limitMg = lim;
+      if (/^\d{1,2}:\d{2}$/.test(String(parsed.prefs.bedtime))) state.prefs.bedtime = parsed.prefs.bedtime;
+      el("limit").value = state.prefs.limitMg;
+      el("bedtime").value = state.prefs.bedtime;
+    }
+
+    saveLocal();
+    render();
+    syncBackupText();
+    backupStatus(result.cups
+      ? "Restored " + result.cups + (result.cups === 1 ? " cup" : " cups") + " across "
+        + result.days + (result.days === 1 ? " day" : " days") + "."
+      : "Nothing new to add - those cups were already here.");
+  }
+
+  function syncBackupText() {
+    var box = el("backup-text");
+    if (box && document.activeElement !== box) box.value = ledgerJSON();
+  }
+
+  function buildBackup() {
+    el("backup-copy").addEventListener("click", function () {
+      var box = el("backup-text");
+      box.select();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(box.value).then(
+          function () { backupStatus("Copied to your clipboard."); },
+          function () { backupStatus("Select the text above and copy it."); }
+        );
+      } else {
+        backupStatus("Select the text above and copy it.");
+      }
+    });
+    el("backup-restore").addEventListener("click", restoreBackup);
+  }
+
+  /* ------------------------------------------------------------------ *
    * Render
    * ------------------------------------------------------------------ */
   function renderStorageNote() {
@@ -1488,6 +1642,7 @@
     renderToday();
     renderCurve();
     renderBars();
+    syncBackupText();
   }
 
   /* ------------------------------------------------------------------ *
@@ -1505,6 +1660,7 @@
   var hadLocal = loadLocal();
   initChrome();
   buildForm();
+  buildBackup();
   if (!hadLocal) showSample();
   renderStorageNote();
   render();
