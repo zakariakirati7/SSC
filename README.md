@@ -27,11 +27,13 @@ python3 tools/build-standalone.py
 
 ## Deploying
 
-GitHub Pages serves this branch from the repository root. Enable it under
-**Settings → Pages**:
+`.github/workflows/pages.yml` deploys the repository root to GitHub Pages on
+every push to the default branch. It enables Pages itself
+(`actions/configure-pages` with `enablement: true`), so no repository setting
+has to be changed by hand, and it fails the build if `index.html` is out of
+date with its source.
 
-- **Source:** Deploy from a branch
-- **Branch:** `claude/cats-pdf-document-mdt9jl` · `/ (root)`
+The site is at <https://zakariakirati7.github.io/SSC/>.
 
 Pages for a private repository requires a paid GitHub plan; on a free account
 the repository must be public.
