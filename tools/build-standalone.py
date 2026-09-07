@@ -16,12 +16,10 @@ repository stay off the web.
 
     python3 tools/build-standalone.py
 
-Set SUPABASE_URL and SUPABASE_ANON_KEY to enable sync. Without them the
-placeholders remain, the page detects that, hides the sync panel, and runs as
-the local-only tracker. The anon key is designed to be public - it ships in the
-page either way - and Row Level Security, not the key, is what protects the
-data. Keeping it in the environment rather than in git is tidiness, not
-secrecy.
+Sync points at the project in DEFAULT_SUPABASE_URL below; SUPABASE_URL and
+SUPABASE_ANON_KEY override it to build against a different one. Both values are
+public by design - the key ships in the page, and Row Level Security, not the
+key, is what protects the data.
 """
 
 import os
@@ -40,6 +38,18 @@ SCRIPT_MARKER = "<script>\n(function (root) {"
 # Pinned to the v2 major. jsDelivr resolves it to the newest 2.x; pin a full
 # version here if you would rather freeze it.
 SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
+
+# The project this site talks to. Both values are public: the publishable key
+# is meant to ship in the browser, and Row Level Security - not the key - is
+# what keeps one person's ledger out of another's. They live here so a plain
+# `python3 tools/build-standalone.py` produces a working site; set the
+# environment variables to point a build at a different project.
+#
+# Rotating the key means editing this line (or setting the env vars). The
+# secret / service_role key is a different thing entirely and must never
+# appear here.
+DEFAULT_SUPABASE_URL = "https://edjjhcslcgphlioflyml.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_nsu6C-nLWOmSaGNam3FrFQ_lfDANgFV"
 
 DESCRIPTION = (
     "Log your coffee, see the caffeine still in your system at bedtime, "
@@ -81,8 +91,8 @@ def build() -> str:
         1,
     )
 
-    url = os.environ.get("SUPABASE_URL", "").strip()
-    key = os.environ.get("SUPABASE_ANON_KEY", "").strip()
+    url = os.environ.get("SUPABASE_URL", "").strip() or DEFAULT_SUPABASE_URL
+    key = os.environ.get("SUPABASE_ANON_KEY", "").strip() or DEFAULT_SUPABASE_KEY
     if url and key:
         fragment = fragment.replace("__SUPABASE_URL__", url).replace("__SUPABASE_ANON_KEY__", key)
         configured = True

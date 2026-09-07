@@ -27,9 +27,11 @@ node --test coffee-tracker/sync.test.js    # test the sync logic
 ```
 
 The build inlines `sync.js`, adds the Supabase client from a CDN, wraps
-everything in a real HTML document, and substitutes `SUPABASE_URL` and
-`SUPABASE_ANON_KEY` from the environment. Without those two variables the page
-detects the missing config, hides the sync panel, and runs local-only.
+everything in a real HTML document, and substitutes the Supabase project URL
+and publishable key. Those default to the project named in
+`tools/build-standalone.py`; `SUPABASE_URL` and `SUPABASE_ANON_KEY` override
+them to build against a different project. A build with neither hides the sync
+panel and runs local-only.
 
 ## Setting up the backend
 
@@ -41,19 +43,21 @@ Run. This creates the tables *and* the Row Level Security policies. Do not skip
 it or create the tables by hand: RLS is the only thing keeping one person's
 ledger out of another's.
 
-**3. Decide about email confirmation.** Authentication → Sign In / Up → Email.
-With "Confirm email" **on** (the default) a new account must click a link
-before it works, and the free tier's built-in mailer is rate-limited to a few
-messages an hour — fine for you, awkward for onboarding several friends at
-once. Turning it off lets people sign in immediately, at the cost of allowing
-sign-ups with addresses they do not own. Either is defensible here; know which
-you chose.
+**3. Email confirmation is off** for this project (Authentication → Sign In /
+Providers → Email → "Confirm email"). Sign-up returns a session immediately, so
+people are syncing the moment they submit the form, and the free tier's
+rate-limited mailer never comes into it. The trade-off accepted here is that
+anyone can sign up with an address they do not own — fine among friends, worth
+revisiting if this goes wider.
 
 **4. Copy the keys.** Project Settings → API: the Project URL and the `anon`
 public key.
 
-**5. Give them to the site.** Netlify → Site configuration → Environment
-variables → add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, then redeploy.
+**5. Give them to the site.** Already done: the project URL and publishable
+key are the defaults in `tools/build-standalone.py`, so every build picks them
+up. To point a deploy at a different project instead, set `SUPABASE_URL` and
+`SUPABASE_ANON_KEY` — Netlify under Site configuration → Environment variables,
+GitHub Actions under Settings → Secrets and variables.
 
 The anon key is meant to be public — it ships inside the page and anyone can
 read it. It is not a password and grants nothing on its own; the RLS policies
@@ -72,9 +76,7 @@ cannot do.
 
 **GitHub Pages** also still deploys, from `.github/workflows/pages.yml`, at
 <https://zakariakirati7.github.io/SSC/>. It runs the tests, builds, and
-publishes `dist/`. To enable sync there too, add `SUPABASE_URL` and
-`SUPABASE_ANON_KEY` as repository secrets (Settings → Secrets and variables →
-Actions); without them that deploy stays local-only.
+publishes `dist/`. Sync works there too, from the same baked-in defaults.
 
 Running both is fine, but they are separate origins with separate browser
 storage: a signed-out ledger on one is invisible to the other. Signed in, both
