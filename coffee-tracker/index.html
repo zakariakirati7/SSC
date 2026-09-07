@@ -753,6 +753,8 @@
   </div>
 
   <footer class="note">
+    Your log is kept in this browser, on this device &mdash; everyone who opens this page keeps their own, and nobody can see anyone else&rsquo;s. Clearing your browser&rsquo;s site data clears the ledger with it.
+    <br><br>
     Caffeine figures are estimates from typical preparations &mdash; a home grinder, a different roast, or a heavy pour will move them. The in-system curve assumes a 45-minute rise to peak and first-order elimination on a 5-hour half-life, which is an average; yours shifts with genetics, medication, and pregnancy. Not medical advice.
   </footer>
 </div>
@@ -793,12 +795,11 @@
   var state = {
     days: {},                 // "YYYY-MM-DD" -> [drink, ...]
     prefs: { limitMg: DEFAULTS.limitMg, bedtime: DEFAULTS.bedtime },
-    mode: "local",            // "db" | "local"
+    storable: true,           // false when the browser refuses localStorage
     sample: false,
     form: { drink: "filter", mult: 1, mgEdited: false }
   };
 
-  var db = null;
   var LS_KEY = "brew-ledger-v1";
 
   /* ------------------------------------------------------------------ *
@@ -868,7 +869,10 @@
   function saveLocal() {
     try {
       window.localStorage.setItem(LS_KEY, JSON.stringify({ days: state.days, prefs: state.prefs }));
-    } catch (e) { /* private mode, blocked storage - nothing to do */ }
+      if (!state.storable) { state.storable = true; renderStorageNote(); }
+    } catch (e) {
+      if (state.storable) { state.storable = false; renderStorageNote(); }
+    }
   }
 
   function loadLocal() {
@@ -885,34 +889,9 @@
     return false;
   }
 
-  function persistDay(key) {
-    saveLocal();
-    if (!db) return;
-    var drinks = dayDrinks(key);
-    var ref = db.doc("days/" + key);
-    var op = drinks.length ? ref.set({ date: key, drinks: drinks }) : ref.delete();
-    op.catch(function (err) { reportWriteError(err); });
-  }
+  function persistDay() { saveLocal(); }
 
-  function persistPrefs() {
-    saveLocal();
-    if (!db) return;
-    db.doc("settings/prefs").set(state.prefs).catch(function (err) { reportWriteError(err); });
-  }
-
-  function reportWriteError(err) {
-    var code = err && err.code;
-    var note = el("storage-note");
-    if (code === "quota_exceeded") {
-      note.innerHTML = '<span class="dot is-local"></span> Storage full &mdash; delete some older days';
-    } else if (code === "revoked" || code === "not_granted") {
-      db = null;
-      state.mode = "local";
-      renderStorageNote();
-    } else {
-      note.innerHTML = '<span class="dot is-local"></span> Last change saved on this device only';
-    }
-  }
+  function persistPrefs() { saveLocal(); }
 
   /* ------------------------------------------------------------------ *
    * Sample data - shown only while the ledger is empty, never written.
@@ -1077,7 +1056,7 @@
     drinks.sort(function (a, b) { return minutesOf(a.at) - minutesOf(b.at); });
     state.days[key] = drinks;
 
-    persistDay(key);
+    persistDay();
     state.form.mgEdited = false;
     var now = new Date();
     el("time").value = pad(now.getHours()) + ":" + pad(now.getMinutes());
@@ -1089,7 +1068,7 @@
     var key = todayKey();
     if (state.sample) { clearSample(); render(); return; }
     state.days[key] = dayDrinks(key).filter(function (d) { return d.id !== id; });
-    persistDay(key);
+    persistDay();
     render();
   }
 
@@ -1419,10 +1398,10 @@
    * ------------------------------------------------------------------ */
   function renderStorageNote() {
     var note = el("storage-note");
-    if (state.mode === "db") {
-      note.innerHTML = '<span class="dot"></span> Saved to your ledger';
+    if (state.storable) {
+      note.innerHTML = '<span class="dot"></span> Your ledger, saved in this browser';
     } else {
-      note.innerHTML = '<span class="dot is-local"></span> Saved on this device only';
+      note.innerHTML = '<span class="dot is-local"></span> This browser blocks storage &mdash; today only';
     }
   }
 
@@ -1530,44 +1509,5 @@
   renderStorageNote();
   render();
 
-  if (window.claude && typeof window.claude.use === "function") {
-    window.claude.use("db").then(function (store) {
-      if (!store) return;
-      db = store;
-      state.mode = "db";
-      renderStorageNote();
-
-      db.doc("settings/prefs").onSnapshot(function (snap) {
-        if (!snap.exists) return;
-        var d = snap.data() || {};
-        state.prefs.limitMg = d.limitMg || DEFAULTS.limitMg;
-        state.prefs.bedtime = d.bedtime || DEFAULTS.bedtime;
-        el("limit").value = state.prefs.limitMg;
-        el("bedtime").value = state.prefs.bedtime;
-        render();
-      }, function () { /* listener died - the page keeps working locally */ });
-
-      db.collection("days").orderBy("date", "desc").limit(120).onSnapshot(function (snap) {
-        var days = {};
-        snap.docs.forEach(function (doc) {
-          var d = doc.data() || {};
-          if (Array.isArray(d.drinks)) days[doc.id] = d.drinks;
-        });
-        if (Object.keys(days).length === 0) {
-          if (!state.sample && !hadLocal) showSample();
-        } else {
-          clearSample();
-          state.days = days;
-          saveLocal();
-        }
-        render();
-      }, function (err) {
-        db = null;
-        state.mode = "local";
-        renderStorageNote();
-        if (err && err.code) reportWriteError(err);
-      });
-    }).catch(function () { /* db stays null; local mode already rendered */ });
-  }
 })();
 </script>
